@@ -1,5 +1,5 @@
-subscription_id     = "5a23e5b2-a165-43ec-8feb-16c95da6d84e"
+subscription_id     = "YOUR-SUBSCRIPTION-ID"
 location            = "westus3"
 vm_size             = "Standard_D2ls_v7"
 ssh_public_key_path = "~/.ssh/nextcloud_key.pub"
-admin_cidr          = "IP/32"
+admin_cidr          = "YOUR-IP/32"
