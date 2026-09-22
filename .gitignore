@@ -1,0 +1,42 @@
+# Credentials and local configuration
+.env
+.env.*
+!.env.example
+!.env.*.example
+secrets/
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+nextcloud_key*
+
+# Terraform local data
+.terraform/
+*.tfstate*
+*.tfplan
+*.tfvars
+*.tfvars.json
+crash.log
+crash.*.log
+
+# Dependencies and generated output
+node_modules/
+dist/
+coverage/
+test-artifacts/
+*.log
+
+# Backups and archives
+backups/
+*-backups/
+*.zip
+*.tar
+*.tar.gz
+*.sql
+*.dump
+
+# Editor and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
