@@ -1054,7 +1054,7 @@ function App() {
                     : send("/files", "PATCH", {
                         path: modal.file.path,
                         destination,
-                        etag: modal.file.etag,
+                        etag: modal.file.folder ? undefined : modal.file.etag,
                       }),
                 modal.type === "folder"
                   ? "Folder created"
@@ -1268,7 +1268,7 @@ function Details({ file, busy, onClose, action, refresh, setModal, setError }) {
                       () =>
                         send("/files", "DELETE", {
                           path: file.path,
-                          etag: file.etag,
+                          etag: file.folder ? undefined : file.etag,
                         }),
                       "Item deleted",
                     );
