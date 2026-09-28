@@ -193,6 +193,10 @@ export function fixture() {
           }
         }
         if (!target) return reply(404, {});
+        if (!op && req.method === "DELETE") {
+          accounts.delete(uid);
+          return ocs([]);
+        }
         if (!op && req.method === "GET") return ocs(profile(target));
         if (op === "groups") {
           if (req.method === "GET") return ocs({ groups: target.groups });

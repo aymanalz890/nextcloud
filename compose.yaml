@@ -1,0 +1,165 @@
+name: nextcloud
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: '3'
+x-app-env: &app-env
+  POSTGRES_HOST: db
+  POSTGRES_DB: nextcloud
+  POSTGRES_USER: nextcloud
+  POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+  NEXTCLOUD_ADMIN_USER: ${NEXTCLOUD_ADMIN_USER:-ncadmin}
+  NEXTCLOUD_ADMIN_PASSWORD_FILE: /run/secrets/admin_password
+  NEXTCLOUD_TRUSTED_DOMAINS: localhost 127.0.0.1 app
+  OVERWRITECLIURL: http://localhost:8080
+  REDIS_HOST: redis
+services:
+  db:
+    image: ${POSTGRES_IMAGE:-postgres:16-alpine}
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: nextcloud
+      POSTGRES_USER: nextcloud
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    secrets:
+    - db_password
+    volumes:
+    - /srv/nextcloud/postgres:/var/lib/postgresql/data
+    networks:
+    - backend
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - pg_isready -U nextcloud -d nextcloud
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    logging: *logging
+  redis:
+    image: ${REDIS_IMAGE:-redis:7-alpine}
+    restart: unless-stopped
+    networks:
+    - backend
+    healthcheck:
+      test:
+      - CMD
+      - redis-cli
+      - ping
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    logging: *logging
+  app:
+    image: ${NEXTCLOUD_IMAGE:-nextcloud:33-apache}
+    restart: unless-stopped
+    environment: *app-env
+    secrets:
+    - db_password
+    - admin_password
+    ports:
+    - 127.0.0.1:8080:80
+    volumes:
+    - /srv/nextcloud/html:/var/www/html
+    networks:
+    - frontend
+    - backend
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+      - CMD
+      - php
+      - -r
+      - '$$s=json_decode(@file_get_contents(''http://127.0.0.1/status.php''),true);
+        exit(($$s[''installed'']??false) && !($$s[''maintenance'']??true) && !($$s[''needsDbUpgrade'']??true)
+        ? 0 : 1);'
+      start_period: 120s
+      interval: 15s
+      timeout: 10s
+      retries: 40
+    logging: *logging
+  cron:
+    image: ${NEXTCLOUD_IMAGE:-nextcloud:33-apache}
+    restart: unless-stopped
+    entrypoint: /cron.sh
+    environment: *app-env
+    secrets:
+    - db_password
+    - admin_password
+    volumes:
+    - /srv/nextcloud/html:/var/www/html
+    networks:
+    - frontend
+    - backend
+    depends_on:
+      app:
+        condition: service_healthy
+    logging: *logging
+  workspace-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    restart: unless-stopped
+    environment:
+      NEXTCLOUD_URL: http://app
+      UI_ORIGIN: ${UI_ORIGIN:-http://localhost:8081}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      PORT: '3000'
+    networks:
+    - ui
+    - frontend
+    read_only: true
+    cap_drop:
+    - ALL
+    security_opt:
+    - no-new-privileges:true
+    healthcheck:
+      test:
+      - CMD
+      - node
+      - -e
+      - fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    logging: *logging
+    depends_on:
+      app:
+        condition: service_healthy
+  workspace-web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    restart: unless-stopped
+    ports:
+    - ${UI_BIND_ADDRESS:-0.0.0.0}:8081:80
+    networks:
+    - ui
+    depends_on:
+      workspace-api:
+        condition: service_healthy
+    healthcheck:
+      test:
+      - CMD
+      - wget
+      - -q
+      - --spider
+      - http://127.0.0.1/
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    logging: *logging
+networks:
+  frontend: {}
+  backend:
+    internal: true
+  ui: {}
+secrets:
+  db_password:
+    file: ./secrets/db_password
+  admin_password:
+    file: ./secrets/admin_password

@@ -130,6 +130,18 @@ export function mountAdmin(app, invalidateSessions) {
     });
     res.status(201).json({ ok: true, id: userid });
   });
+  app.delete("/api/admin/users/:id", async (req, res) => {
+    const uid = id(req.params.id);
+    if (uid === req.session.user.id)
+      throw new ApiError(403, "You cannot delete your own account.");
+    if ((await currentGroups(req.nc, uid)).includes("admin"))
+      throw new ApiError(403, "Administrator accounts cannot be deleted here.");
+    if (req.body?.confirmUsername !== uid)
+      throw new ApiError(400, "Type the exact username to confirm deletion.");
+    await provision(req, "DELETE", "cloud/users/" + segment(uid), {});
+    invalidateSessions(uid);
+    res.json({ ok: true });
+  });
   app.patch("/api/admin/users/:id/status", async (req, res) => {
     const uid = id(req.params.id),
       enabled = req.body?.enabled;

@@ -11,6 +11,7 @@ import {
   Check,
   UserMinus,
   UserCheck,
+  Trash2,
 } from "lucide-react";
 
 function Dialog({ title, children, onClose, busy }) {
@@ -54,7 +55,9 @@ export default function Admin({ api, send, user, onNotice }) {
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [dialog, setDialog] = useState(null),
-    [dialogError, setDialogError] = useState("");
+    [dialogError, setDialogError] = useState(""),
+    [deleteUser, setDeleteUser] = useState(null),
+    [confirmation, setConfirmation] = useState("");
   const [group, setGroup] = useState(""),
     [members, setMembers] = useState([]),
     [membersLoading, setMembersLoading] = useState(false),
@@ -275,7 +278,7 @@ export default function Admin({ api, send, user, onNotice }) {
                       <th>User</th>
                       <th>Groups</th>
                       <th>Status</th>
-                      <th>Account access</th>
+                      <th>Account actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -310,6 +313,7 @@ export default function Admin({ api, send, user, onNotice }) {
                               Protected administrator
                             </span>
                           ) : (
+                            <div className="account-actions">
                             <button
                               className={
                                 "secondary " + (u.enabled ? "danger-text" : "")
@@ -349,6 +353,12 @@ export default function Admin({ api, send, user, onNotice }) {
                               )}{" "}
                               {u.enabled ? "Disable" : "Enable"}
                             </button>
+                            <button className="secondary danger-text" disabled={busy}
+                              aria-label={"Delete user " + u.id}
+                              onClick={() => { setDeleteUser(u); setConfirmation(""); setDialogError(""); }}>
+                              <Trash2 size={15} /> Delete
+                            </button>
+                            </div>
                           )}
                         </td>
                       </tr>
@@ -584,6 +594,33 @@ export default function Admin({ api, send, user, onNotice }) {
           </div>
         </div>
       </section>
+      {deleteUser && (
+        <Dialog title={"Delete user " + deleteUser.id} busy={busy}
+          onClose={() => setDeleteUser(null)}>
+          <form onSubmit={async (e) => {
+            e.preventDefault();
+            if (confirmation !== deleteUser.id) return;
+            const ok = await mutate(() => send("/admin/users/" + encodeURIComponent(deleteUser.id),
+              "DELETE", { confirmUsername: confirmation }), "User deleted", { modal: true });
+            if (ok) { setDeleteUser(null); setOffset(0); }
+          }}>
+            <p>This permanently deletes the account and its owned files and shares.
+              Back up or transfer anything needed first. Disable the account instead to retain its data.</p>
+            {dialogError && <div className="error" role="alert">{dialogError}</div>}
+            <label>Type the username to confirm
+              <input autoComplete="off" value={confirmation} disabled={busy}
+                onChange={(e) => setConfirmation(e.target.value)} required />
+            </label>
+            <div className="modal-actions">
+              <button type="button" className="secondary" disabled={busy}
+                onClick={() => setDeleteUser(null)}>Cancel</button>
+              <button type="submit" className="primary" disabled={busy || confirmation !== deleteUser.id}>
+                Permanently delete user
+              </button>
+            </div>
+          </form>
+        </Dialog>
+      )}
       {dialog && (
         <Dialog
           title={

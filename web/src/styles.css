@@ -1645,3 +1645,5 @@ th {
     min-width: 120px;
   }
 }
+
+.account-actions { display: flex; flex-wrap: wrap; gap: 8px; }

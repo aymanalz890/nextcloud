@@ -412,3 +412,20 @@ test("admin safety: protected accounts/group, path validation, pagination, creat
   assert.equal(d.groups.length, 5);
   assert.equal(d.hasMore, false);
 });
+
+test("user deletion requires admin, CSRF and exact confirmation; protects admins and revokes sessions", async (t) => {
+  const f = await setup(t), admin = await f.login("ncadmin"), member = await f.login("meshal");
+  const remove = (uid, headers, confirmUsername = uid) => fetch(f.address + "/api/admin/users/" + encodeURIComponent(uid), {
+    method: "DELETE", headers, body: JSON.stringify({ confirmUsername }),
+  });
+  assert.equal((await remove("harun", member.headers)).status, 403);
+  assert.equal((await remove("meshal", { ...admin.headers, "X-CSRF-Token": "wrong" })).status, 403);
+  assert.equal((await remove("meshal", admin.headers, "wrong")).status, 400);
+  assert.equal((await remove("ncadmin", admin.headers)).status, 403);
+  f.accounts.get("harun").groups = ["admin"];
+  assert.equal((await remove("harun", admin.headers)).status, 403);
+  assert.equal((await remove("meshal", admin.headers)).status, 200);
+  assert.equal(f.accounts.has("meshal"), false);
+  assert.equal((await fetch(f.address + "/api/me", { headers: member.headers })).status, 401);
+  assert.equal((await remove("meshal", admin.headers)).status, 404);
+});
