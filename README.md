@@ -26,6 +26,10 @@ This repository is intended for a **fresh deployment** and does not include a mi
 - User and group administration
 - Group deletion with protection for the built-in `admin` group
 
+## Project structure
+
+The README is at the repository root. Application code, Docker Compose, scripts, tests, and Terraform are in `02_src/`.
+
 ## Deployment
 
 ### Prerequisites
@@ -41,10 +45,12 @@ Windows Git Bash is supported.
 
 ### 1. Provision Azure infrastructure
 
+Run these commands on your computer, starting from the repository root:
+
 ```bash
 az login
 
-cd terraform
+cd 02_src/terraform
 cp terraform.tfvars.example terraform.tfvars
 ```
 
@@ -61,7 +67,7 @@ cd ..
 
 ### 2. Upload the project
 
-From the project root:
+Run from `02_src/` on your computer (the `cd ..` above leaves you there). The upload copies its contents directly into `/opt/teamspace` on the VM:
 
 ```bash
 upload_dir=$(ssh -i ~/.ssh/nextcloud_key azureuser@"$vm_ip" \
@@ -177,9 +183,10 @@ Backups are stored under:
 
 ## Tests
 
-Requires Node.js 22 or later.
+Requires Node.js 22 or later. Run on your computer from the repository root:
 
 ```bash
+cd 02_src
 npm ci
 npm test
 npm run build
