@@ -65,7 +65,7 @@ From the project root:
 
 ```bash
 upload_dir=$(ssh -i ~/.ssh/nextcloud_key azureuser@"$vm_ip" \
-  'mktemp -d ~/teamspace-release.XXXXXX')
+  'mktemp -d ~/teamspace.XXXXXX')
 
 set -o pipefail
 
